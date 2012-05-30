@@ -14,6 +14,6 @@ func main() {
 
 	for i := 0; i < 10; i++ {
 		log.Printf("Sending packet for some_metric_%d", i)
-		gm.SendMetric(fmt.Sprintf("some_metric_%d", i), "8675309", gmetric.VALUE_UNSIGNED_INT, "units", gmetric.SLOPE_BOTH, 300, 600, "GROUP")
+		go gm.SendMetric(fmt.Sprintf("some_metric_%d", i), "8675309", gmetric.VALUE_UNSIGNED_INT, "units", gmetric.SLOPE_BOTH, 300, 600, "GROUP")
 	}
 }

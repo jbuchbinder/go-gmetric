@@ -1,6 +1,7 @@
 package gmetric
 
 import (
+	"log"
 	"net"
 )
 
@@ -99,6 +100,8 @@ func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint3
 		}
 	}
 
+	g.DebugBuffer(buf, buf_len)
+
 	return buf, buf_len
 }
 
@@ -122,6 +125,8 @@ func (g *Gmetric) BuildValuePacket(host string, name string, metricType uint32, 
 
 	g.AppendXDRString(buf, buf_len, "%s")
 	g.AppendXDRString(buf, buf_len, value)
+
+	g.DebugBuffer(buf, buf_len)
 
 	return buf, buf_len
 }
@@ -178,4 +183,11 @@ func (g *Gmetric) TypeToString(t uint32) string {
 		return "double"
 	}
 	return "unknown"
+}
+
+func (g *Gmetric) DebugBuffer(buf []byte, buf_len uint32) {
+	log.Printf("Buffer contains %d bytes\n", buf_len)
+	for i := 0; i < int(buf_len); i++ {
+		log.Printf("Position %d contains byte value %d\n", i, buf[i])
+	}
 }
