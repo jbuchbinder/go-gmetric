@@ -20,12 +20,12 @@ import (
 )
 
 func main() {
-	gIP         := net.IPv4(127, 0, 0, 1)
-	gangliaPort := 1234
+  gIP         := net.IPv4(127, 0, 0, 1)
+  gangliaPort := 1234
   host        := "127.0.0.1"
   spoofHost   := "127.0.0.1:spoof"
 
-	gm := gmetric.Gmetric{gIP, gangliaPort, host, spoofHost)
+  gm := gmetric.Gmetric{gIP, gangliaPort, host, spoofHost)
 
   m_name  := "some_metric"
   m_value := "8675309"
@@ -34,7 +34,7 @@ func main() {
   m_slope := gmetric.SLOPE_BOTH
   m_grp   := "group"
 
-	gm.SendMetric(m_name, m_value, m_type, m_units, m_slope, 300, 600, m_grp)
+  gm.SendMetric(m_name, m_value, m_type, m_units, m_slope, 300, 600, m_grp)
 }
 ```
 
