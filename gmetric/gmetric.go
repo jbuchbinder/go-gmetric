@@ -141,7 +141,7 @@ func (g *Gmetric) BuildValuePacket(host string, name string, metricType uint32, 
 
 func (g *Gmetric) AppendXDRInteger(buf *bytes.Buffer, val uint32) {
 	// Append integer, four bytes
-	buf.Write([]byte{byte(val << 24 & 0xff), byte(val << 16 & 0xff), byte(val << 8 & 0xff), byte(val & 0xff)})
+	buf.Write([]byte{byte(val >> 24 & 0xff), byte(val >> 16 & 0xff), byte(val >> 8 & 0xff), byte(val & 0xff)})
 	//log.Printf("Buffer contains %d bytes after %d added\n", buf.Len(), val)
 }
 
