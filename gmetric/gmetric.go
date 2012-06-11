@@ -2,7 +2,8 @@ package gmetric
 
 import (
 	"bytes"
-	"log"
+	"fmt"
+	"log/syslog"
 	"net"
 )
 
@@ -28,6 +29,10 @@ const (
 	MAX_PACKET_LENGTH = 512
 )
 
+var (
+	logger, _ = syslog.New(syslog.LOG_DEBUG, "go-gmetric")
+)
+
 type Gmetric struct {
 	GangliaServer net.IP
 	GangliaPort   int
@@ -35,13 +40,16 @@ type Gmetric struct {
 	Spoof         string
 }
 
+func (g *Gmetric) SetLogger(l *syslog.Writer) {
+	logger = l
+}
+
 func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string) {
-	log.Println("SendMetric(%s, %s)", name, value)
+	logger.Debug(fmt.Sprintf("SendMetric(%s, %s)", name, value))
 	raddr := &net.UDPAddr{g.GangliaServer, g.GangliaPort}
 	udp, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
-		log.Println("Unable to form metric packet")
-		panic(err)
+		logger.Err("Unable to form metric packet")
 		return
 	}
 
@@ -57,7 +65,7 @@ func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units
 }
 
 func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, spoof string, group string) (buf_out []byte) {
-	log.Println("BuildMetadataPacket()")
+	logger.Debug("BuildMetadataPacket()")
 	buf := new(bytes.Buffer)
 
 	g.AppendXDRInteger(buf, 128) // gmetadata_full
@@ -111,7 +119,7 @@ func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint3
 }
 
 func (g *Gmetric) BuildValuePacket(host string, name string, metricType uint32, value string, spoof string, group string) (buf_out []byte) {
-	log.Println("BuildValuePacket()")
+	logger.Debug("BuildValuePacket()")
 
 	buf := new(bytes.Buffer)
 
@@ -142,7 +150,7 @@ func (g *Gmetric) BuildValuePacket(host string, name string, metricType uint32, 
 func (g *Gmetric) AppendXDRInteger(buf *bytes.Buffer, val uint32) {
 	// Append integer, four bytes
 	buf.Write([]byte{byte(val >> 24 & 0xff), byte(val >> 16 & 0xff), byte(val >> 8 & 0xff), byte(val & 0xff)})
-	//log.Printf("Buffer contains %d bytes after %d added\n", buf.Len(), val)
+	//logger.Printf("Buffer contains %d bytes after %d added\n", buf.Len(), val)
 }
 
 func (g *Gmetric) AppendXDRString(buf *bytes.Buffer, val string) {
@@ -186,8 +194,8 @@ func (g *Gmetric) TypeToString(t uint32) string {
 }
 
 func (g *Gmetric) DebugBuffer(buf []byte) {
-	log.Printf("buffer contains %d bytes\n", len(buf))
+	logger.Debug(fmt.Sprintf("buffer contains %d bytes\n", len(buf)))
 	for i := 0; i < len(buf); i++ {
-		//log.Printf("Position %d contains byte value %d\n", i, buf[i])
+		//logger.Debug(fmt.Sprintf("Position %d contains byte value %d\n", i, buf[i]))
 	}
 }
