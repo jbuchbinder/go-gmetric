@@ -30,7 +30,8 @@ const (
 )
 
 var (
-	logger, _ = syslog.New(syslog.LOG_DEBUG, "go-gmetric")
+	logger, _     = syslog.New(syslog.LOG_DEBUG, "go-gmetric")
+	insaneVerbose = false
 )
 
 type Gmetric struct {
@@ -42,6 +43,10 @@ type Gmetric struct {
 
 func (g *Gmetric) SetLogger(l *syslog.Writer) {
 	logger = l
+}
+
+func (g *Gmetric) SetVerbose(v bool) {
+	insaneVerbose = v
 }
 
 func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string) {
@@ -95,7 +100,7 @@ func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint3
 			g.AppendXDRString(buf, GROUP)
 			g.AppendXDRString(buf, group)
 		} else {
-			g.AppendXDRInteger(buf, 1)
+			g.AppendXDRInteger(buf, 0)
 		}
 	} else {
 		if len(group) != 0 {
@@ -196,6 +201,8 @@ func (g *Gmetric) TypeToString(t uint32) string {
 func (g *Gmetric) DebugBuffer(buf []byte) {
 	logger.Debug(fmt.Sprintf("buffer contains %d bytes\n", len(buf)))
 	for i := 0; i < len(buf); i++ {
-		//logger.Debug(fmt.Sprintf("Position %d contains byte value %d\n", i, buf[i]))
+		if insaneVerbose {
+			logger.Debug(fmt.Sprintf("Position %d contains byte value %d\n", i, buf[i]))
+		}
 	}
 }
