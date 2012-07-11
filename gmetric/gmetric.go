@@ -51,6 +51,7 @@ func (g *Gmetric) SetVerbose(v bool) {
 
 func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string) {
 	logger.Debug(fmt.Sprintf("SendMetric(%s, %s)", name, value))
+	// logger.Debug(fmt.Sprintf("SendMetric host = %s, spoof = %s", g.Host, g.Spoof))
 	raddr := &net.UDPAddr{g.GangliaServer, g.GangliaPort}
 	udp, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
@@ -60,12 +61,17 @@ func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units
 
 	// Build and write metadata packet
 	m_buf := g.BuildMetadataPacket(g.Host, name, metricType, units, slope, tmax, dmax, g.Spoof, group)
+	logger.Info(string(m_buf))
 	udp.Write(m_buf)
 
 	// Build and write value packet
 	v_buf := g.BuildValuePacket(g.Host, name, metricType, value, g.Spoof, group)
+	logger.Info(string(v_buf))
 	udp.Write(v_buf)
 
+	if insaneVerbose {
+		logger.Info(fmt.Sprintf("Closing UDP socket to %s:%d (%s)", g.GangliaServer, g.GangliaPort, g.Spoof))
+	}
 	udp.Close()
 }
 
