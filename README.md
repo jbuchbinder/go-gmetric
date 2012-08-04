@@ -26,7 +26,11 @@ func main() {
   host        := "127.0.0.1"
   spoofHost   := "127.0.0.1:spoof"
 
-  gm := gmetric.Gmetric{gIP, gangliaPort, host, spoofHost}
+	gm := gmetric.Gmetric{
+		Host:  host,
+		Spoof: spoofHost,
+	}
+	gm.AddServer(gmetric.GmetricServer{gIP, gangliaPort})
 
   m_name     := "some_metric"
   m_value    := fmt.Sprint(8675309)

@@ -26,7 +26,8 @@ const (
 	GROUP      = "GROUP"
 	SPOOF_HOST = "SPOOF_HOST"
 
-	MAX_PACKET_LENGTH = 512
+	MAX_PACKET_LENGTH   = 512
+	MAX_GMETRIC_SERVERS = 16
 )
 
 var (
@@ -34,11 +35,26 @@ var (
 	insaneVerbose = false
 )
 
+type GmetricServer struct {
+	Server net.IP
+	Port   int
+}
+
 type Gmetric struct {
-	GangliaServer net.IP
-	GangliaPort   int
-	Host          string
-	Spoof         string
+	Servers    []GmetricServer
+	NumServers int
+	Host       string
+	Spoof      string
+}
+
+func (g *Gmetric) AddServer(s GmetricServer) {
+	if g.NumServers == 0 {
+		// Initialize
+		g.Servers = make([]GmetricServer, MAX_GMETRIC_SERVERS)
+		g.NumServers = 0
+	}
+	g.Servers[g.NumServers] = s
+	g.NumServers++
 }
 
 func (g *Gmetric) SetLogger(l *syslog.Writer) {
@@ -52,27 +68,30 @@ func (g *Gmetric) SetVerbose(v bool) {
 func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string) {
 	logger.Debug(fmt.Sprintf("SendMetric(%s, %s)", name, value))
 	// logger.Debug(fmt.Sprintf("SendMetric host = %s, spoof = %s", g.Host, g.Spoof))
-	raddr := &net.UDPAddr{g.GangliaServer, g.GangliaPort}
-	udp, err := net.DialUDP("udp", nil, raddr)
-	if err != nil {
-		logger.Err("Unable to form metric packet")
-		return
+
+	for i := 0; i < len(g.Servers); i++ {
+		raddr := &net.UDPAddr{g.Servers[i].Server, g.Servers[i].Port}
+		udp, err := net.DialUDP("udp", nil, raddr)
+		if err != nil {
+			logger.Err(fmt.Sprintf("Unable to form metric packet to %s:%d", g.Servers[i].Server, g.Servers[i].Port))
+			continue
+		}
+
+		// Build and write metadata packet
+		m_buf := g.BuildMetadataPacket(g.Host, name, metricType, units, slope, tmax, dmax, g.Spoof, group)
+		logger.Info(string(m_buf))
+		udp.Write(m_buf)
+
+		// Build and write value packet
+		v_buf := g.BuildValuePacket(g.Host, name, metricType, value, g.Spoof, group)
+		logger.Info(string(v_buf))
+		udp.Write(v_buf)
+
+		if insaneVerbose {
+			logger.Info(fmt.Sprintf("Closing UDP socket to %s:%d (%s)", g.Servers[i].Server, g.Servers[i].Port, g.Spoof))
+		}
+		udp.Close()
 	}
-
-	// Build and write metadata packet
-	m_buf := g.BuildMetadataPacket(g.Host, name, metricType, units, slope, tmax, dmax, g.Spoof, group)
-	logger.Info(string(m_buf))
-	udp.Write(m_buf)
-
-	// Build and write value packet
-	v_buf := g.BuildValuePacket(g.Host, name, metricType, value, g.Spoof, group)
-	logger.Info(string(v_buf))
-	udp.Write(v_buf)
-
-	if insaneVerbose {
-		logger.Info(fmt.Sprintf("Closing UDP socket to %s:%d (%s)", g.GangliaServer, g.GangliaPort, g.Spoof))
-	}
-	udp.Close()
 }
 
 func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, spoof string, group string) (buf_out []byte) {
