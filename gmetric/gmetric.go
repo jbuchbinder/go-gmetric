@@ -66,7 +66,9 @@ func (g *Gmetric) SetVerbose(v bool) {
 }
 
 func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string) {
-	logger.Debug(fmt.Sprintf("SendMetric(%s, %s)", name, value))
+	if insaneVerbose {
+		logger.Debug(fmt.Sprintf("SendMetric(%s, %s)", name, value))
+	}
 	// logger.Debug(fmt.Sprintf("SendMetric host = %s, spoof = %s", g.Host, g.Spoof))
 
 	for i := 0; i < len(g.Servers); i++ {
@@ -79,12 +81,16 @@ func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units
 
 		// Build and write metadata packet
 		m_buf := g.BuildMetadataPacket(g.Host, name, metricType, units, slope, tmax, dmax, g.Spoof, group)
-		logger.Info(string(m_buf))
+		if insaneVerbose {
+			logger.Info(string(m_buf))
+		}
 		udp.Write(m_buf)
 
 		// Build and write value packet
 		v_buf := g.BuildValuePacket(g.Host, name, metricType, value, g.Spoof, group)
-		logger.Info(string(v_buf))
+		if insaneVerbose {
+			logger.Info(string(v_buf))
+		}
 		udp.Write(v_buf)
 
 		if insaneVerbose {
@@ -95,7 +101,9 @@ func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units
 }
 
 func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, spoof string, group string) (buf_out []byte) {
-	logger.Debug("BuildMetadataPacket()")
+	if insaneVerbose {
+		logger.Debug("BuildMetadataPacket()")
+	}
 	buf := new(bytes.Buffer)
 
 	g.AppendXDRInteger(buf, 128) // gmetadata_full
@@ -141,7 +149,9 @@ func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint3
 		}
 	}
 
-	g.DebugBuffer(buf.Bytes())
+	if insaneVerbose {
+		g.DebugBuffer(buf.Bytes())
+	}
 
 	ret := buf.Bytes()
 	buf.Reset()
@@ -149,7 +159,9 @@ func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint3
 }
 
 func (g *Gmetric) BuildValuePacket(host string, name string, metricType uint32, value string, spoof string, group string) (buf_out []byte) {
-	logger.Debug("BuildValuePacket()")
+	if insaneVerbose {
+		logger.Debug("BuildValuePacket()")
+	}
 
 	buf := new(bytes.Buffer)
 
@@ -170,7 +182,9 @@ func (g *Gmetric) BuildValuePacket(host string, name string, metricType uint32, 
 	g.AppendXDRString(buf, "%s")
 	g.AppendXDRString(buf, value)
 
-	g.DebugBuffer(buf.Bytes())
+	if insaneVerbose {
+		g.DebugBuffer(buf.Bytes())
+	}
 
 	ret := buf.Bytes()
 	buf.Reset()
@@ -224,7 +238,9 @@ func (g *Gmetric) TypeToString(t uint32) string {
 }
 
 func (g *Gmetric) DebugBuffer(buf []byte) {
-	logger.Debug(fmt.Sprintf("buffer contains %d bytes\n", len(buf)))
+	if insaneVerbose {
+		logger.Debug(fmt.Sprintf("buffer contains %d bytes\n", len(buf)))
+	}
 	for i := 0; i < len(buf); i++ {
 		if insaneVerbose {
 			logger.Debug(fmt.Sprintf("Position %d contains byte value %d\n", i, buf[i]))
