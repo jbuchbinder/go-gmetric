@@ -1,7 +1,7 @@
 package main
 
 import "fmt"
-import "../gmetric"
+import "github.com/jbuchbinder/go-gmetric/gmetric"
 import "log"
 import "net"
 
