@@ -23,6 +23,10 @@ const (
 	VALUE_FLOAT          = 6
 	VALUE_DOUBLE         = 7
 
+	PACKET_BOTH = 0
+	PACKET_META = 1
+	PACKET_DATA = 2
+
 	GROUP      = "GROUP"
 	SPOOF_HOST = "SPOOF_HOST"
 
@@ -34,6 +38,8 @@ var (
 	logger, _     = syslog.New(syslog.LOG_DEBUG, "go-gmetric")
 	insaneVerbose = false
 )
+
+type PacketType uint
 
 type GmetricServer struct {
 	Server net.IP
@@ -65,12 +71,35 @@ func (g *Gmetric) SetVerbose(v bool) {
 	insaneVerbose = v
 }
 
-func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string) {
+func (g *Gmetric) SendMetricPackets(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string, packetType PacketType, conn []*net.UDPConn) {
 	if insaneVerbose {
 		logger.Debug(fmt.Sprintf("SendMetric(%s, %s)", name, value))
 	}
 	// logger.Debug(fmt.Sprintf("SendMetric host = %s, spoof = %s", g.Host, g.Spoof))
 
+	for i := 0; i < len(conn); i++ {
+		// Build and write metadata packet
+		if packetType == PACKET_BOTH || packetType == PACKET_META {
+			m_buf := g.BuildMetadataPacket(g.Host, name, metricType, units, slope, tmax, dmax, g.Spoof, group)
+			if insaneVerbose {
+				logger.Info(string(m_buf))
+			}
+			conn[i].Write(m_buf)
+		}
+
+		// Build and write value packet
+		if packetType == PACKET_BOTH || packetType == PACKET_DATA {
+			v_buf := g.BuildValuePacket(g.Host, name, metricType, value, g.Spoof, group)
+			if insaneVerbose {
+				logger.Info(string(v_buf))
+			}
+			conn[i].Write(v_buf)
+		}
+	}
+}
+
+func (g *Gmetric) OpenConnections() []*net.UDPConn {
+	conn := make([]*net.UDPConn, 1)
 	for i := 0; i < len(g.Servers); i++ {
 		raddr := &net.UDPAddr{g.Servers[i].Server, g.Servers[i].Port}
 		udp, err := net.DialUDP("udp", nil, raddr)
@@ -78,26 +107,22 @@ func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units
 			logger.Err(fmt.Sprintf("Unable to form metric packet to %s:%d", g.Servers[i].Server, g.Servers[i].Port))
 			continue
 		}
-
-		// Build and write metadata packet
-		m_buf := g.BuildMetadataPacket(g.Host, name, metricType, units, slope, tmax, dmax, g.Spoof, group)
-		if insaneVerbose {
-			logger.Info(string(m_buf))
-		}
-		udp.Write(m_buf)
-
-		// Build and write value packet
-		v_buf := g.BuildValuePacket(g.Host, name, metricType, value, g.Spoof, group)
-		if insaneVerbose {
-			logger.Info(string(v_buf))
-		}
-		udp.Write(v_buf)
-
-		if insaneVerbose {
-			logger.Info(fmt.Sprintf("Closing UDP socket to %s:%d (%s)", g.Servers[i].Server, g.Servers[i].Port, g.Spoof))
-		}
-		udp.Close()
+		conn = append(conn, udp)
 	}
+	return conn
+}
+
+func (g *Gmetric) CloseConnections(conn []*net.UDPConn) {
+	for i := 0; i < len(conn); i++ {
+		conn[i].Close()
+	}
+}
+
+// Backwards-compatibility wrapper
+func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string) {
+	conn := g.OpenConnections()
+	g.SendMetricPackets(name, value, metricType, units, slope, tmax, dmax, group, PACKET_BOTH, conn)
+	g.CloseConnections(conn)
 }
 
 func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, spoof string, group string) (buf_out []byte) {
