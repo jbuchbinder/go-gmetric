@@ -101,7 +101,7 @@ func (g *Gmetric) SendMetricPackets(name string, value string, metricType uint32
 func (g *Gmetric) OpenConnections() []*net.UDPConn {
 	conn := make([]*net.UDPConn, 1)
 	for i := 0; i < len(g.Servers); i++ {
-		raddr := &net.UDPAddr{g.Servers[i].Server, g.Servers[i].Port}
+		raddr := &net.UDPAddr{IP: g.Servers[i].Server, Port: g.Servers[i].Port}
 		udp, err := net.DialUDP("udp", nil, raddr)
 		if err != nil {
 			logger.Err(fmt.Sprintf("Unable to form metric packet to %s:%d", g.Servers[i].Server, g.Servers[i].Port))
