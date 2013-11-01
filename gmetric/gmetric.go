@@ -99,7 +99,7 @@ func (g *Gmetric) SendMetricPackets(name string, value string, metricType uint32
 }
 
 func (g *Gmetric) OpenConnections() []*net.UDPConn {
-	conn := make([]*net.UDPConn, 1)
+	conn := make([]*net.UDPConn, 0)
 	for i := 0; i < len(g.Servers); i++ {
 		raddr := &net.UDPAddr{IP: g.Servers[i].Server, Port: g.Servers[i].Port}
 		udp, err := net.DialUDP("udp", nil, raddr)
