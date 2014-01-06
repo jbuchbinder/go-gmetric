@@ -48,19 +48,16 @@ type GmetricServer struct {
 
 type Gmetric struct {
 	Servers    []GmetricServer
-	NumServers int
 	Host       string
 	Spoof      string
 }
 
 func (g *Gmetric) AddServer(s GmetricServer) {
-	if g.NumServers == 0 {
+	if g.Servers == nil {
 		// Initialize
-		g.Servers = make([]GmetricServer, MAX_GMETRIC_SERVERS)
-		g.NumServers = 0
+		g.Servers = make([]GmetricServer, 0, MAX_GMETRIC_SERVERS)
 	}
-	g.Servers[g.NumServers] = s
-	g.NumServers++
+	g.Servers = append(g.Servers, s)
 }
 
 func (g *Gmetric) SetLogger(l *syslog.Writer) {
