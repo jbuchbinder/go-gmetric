@@ -2,6 +2,7 @@ GO-GMETRIC
 ==========
 
 [![Build Status](https://secure.travis-ci.org/jbuchbinder/go-gmetric.png)](http://travis-ci.org/jbuchbinder/go-gmetric)
+[![GoDoc](https://godoc.org/github.com/jbuchbinder/go-gmetric/gmetric?status.png)](https://godoc.org/github.com/jbuchbinder/go-gmetric/gmetric)
 
 Native Ganglia gmetric packet sending support for Google Go.
 
