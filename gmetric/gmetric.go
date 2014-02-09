@@ -48,19 +48,16 @@ type GmetricServer struct {
 
 type Gmetric struct {
 	Servers    []GmetricServer
-	NumServers int
 	Host       string
 	Spoof      string
 }
 
 func (g *Gmetric) AddServer(s GmetricServer) {
-	if g.NumServers == 0 {
+	if g.Servers == nil {
 		// Initialize
-		g.Servers = make([]GmetricServer, MAX_GMETRIC_SERVERS)
-		g.NumServers = 0
+		g.Servers = make([]GmetricServer, 0, MAX_GMETRIC_SERVERS)
 	}
-	g.Servers[g.NumServers] = s
-	g.NumServers++
+	g.Servers = append(g.Servers, s)
 }
 
 func (g *Gmetric) SetLogger(l *syslog.Writer) {
@@ -99,7 +96,7 @@ func (g *Gmetric) SendMetricPackets(name string, value string, metricType uint32
 }
 
 func (g *Gmetric) OpenConnections() []*net.UDPConn {
-	conn := make([]*net.UDPConn, 1)
+	conn := make([]*net.UDPConn, 0)
 	for i := 0; i < len(g.Servers); i++ {
 		raddr := &net.UDPAddr{IP: g.Servers[i].Server, Port: g.Servers[i].Port}
 		udp, err := net.DialUDP("udp", nil, raddr)
