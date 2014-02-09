@@ -30,7 +30,9 @@ const (
 	GROUP      = "GROUP"
 	SPOOF_HOST = "SPOOF_HOST"
 
-	MAX_PACKET_LENGTH   = 512
+	// Maximum allocated length of packets.
+	MAX_PACKET_LENGTH = 512
+	// Maximum number of Ganglia gmetric receiving instances.
 	MAX_GMETRIC_SERVERS = 16
 )
 
@@ -41,15 +43,17 @@ var (
 
 type PacketType uint
 
+// Represents a single Ganglia gmetric receiver.
 type GmetricServer struct {
 	Server net.IP
 	Port   int
 }
 
+// Base object, on which all library operations are based.
 type Gmetric struct {
-	Servers    []GmetricServer
-	Host       string
-	Spoof      string
+	Servers []GmetricServer
+	Host    string
+	Spoof   string
 }
 
 func (g *Gmetric) AddServer(s GmetricServer) {
@@ -60,10 +64,12 @@ func (g *Gmetric) AddServer(s GmetricServer) {
 	g.Servers = append(g.Servers, s)
 }
 
+// Set external syslog.Writer object.
 func (g *Gmetric) SetLogger(l *syslog.Writer) {
 	logger = l
 }
 
+// Set verbosity of library.
 func (g *Gmetric) SetVerbose(v bool) {
 	insaneVerbose = v
 }
@@ -77,20 +83,20 @@ func (g *Gmetric) SendMetricPackets(name string, value string, metricType uint32
 	for i := 0; i < len(conn); i++ {
 		// Build and write metadata packet
 		if packetType == PACKET_BOTH || packetType == PACKET_META {
-			m_buf := g.BuildMetadataPacket(g.Host, name, metricType, units, slope, tmax, dmax, g.Spoof, group)
+			mBuf := g.buildMetadataPacket(g.Host, name, metricType, units, slope, tmax, dmax, g.Spoof, group)
 			if insaneVerbose {
-				logger.Info(string(m_buf))
+				logger.Info(string(mBuf))
 			}
-			conn[i].Write(m_buf)
+			conn[i].Write(mBuf)
 		}
 
 		// Build and write value packet
 		if packetType == PACKET_BOTH || packetType == PACKET_DATA {
-			v_buf := g.BuildValuePacket(g.Host, name, metricType, value, g.Spoof, group)
+			vBuf := g.buildValuePacket(g.Host, name, metricType, value, g.Spoof, group)
 			if insaneVerbose {
-				logger.Info(string(v_buf))
+				logger.Info(string(vBuf))
 			}
-			conn[i].Write(v_buf)
+			conn[i].Write(vBuf)
 		}
 	}
 }
@@ -122,52 +128,52 @@ func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units
 	g.CloseConnections(conn)
 }
 
-func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, spoof string, group string) (buf_out []byte) {
+func (g *Gmetric) buildMetadataPacket(host string, name string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, spoof string, group string) (bufOut []byte) {
 	if insaneVerbose {
-		logger.Debug("BuildMetadataPacket()")
+		logger.Debug("buildMetadataPacket()")
 	}
 	buf := new(bytes.Buffer)
 
-	g.AppendXDRInteger(buf, 128) // gmetadata_full
+	g.appendXDRInteger(buf, 128) // gmetadata_full
 
 	if len(spoof) == 0 {
-		g.AppendXDRString(buf, host)
+		g.appendXDRString(buf, host)
 	} else {
-		g.AppendXDRString(buf, spoof)
+		g.appendXDRString(buf, spoof)
 	}
-	g.AppendXDRString(buf, name)
+	g.appendXDRString(buf, name)
 	if len(spoof) != 0 {
-		g.AppendXDRInteger(buf, 1)
+		g.appendXDRInteger(buf, 1)
 	} else {
-		g.AppendXDRInteger(buf, 0)
+		g.appendXDRInteger(buf, 0)
 	}
 
-	g.AppendXDRString(buf, g.TypeToString(metricType))
-	g.AppendXDRString(buf, name)
-	g.AppendXDRString(buf, units)
-	g.AppendXDRInteger(buf, slope)
-	g.AppendXDRInteger(buf, tmax)
-	g.AppendXDRInteger(buf, dmax)
+	g.appendXDRString(buf, g.TypeToString(metricType))
+	g.appendXDRString(buf, name)
+	g.appendXDRString(buf, units)
+	g.appendXDRInteger(buf, slope)
+	g.appendXDRInteger(buf, tmax)
+	g.appendXDRInteger(buf, dmax)
 
 	if len(spoof) == 0 {
 		if len(group) != 0 {
-			g.AppendXDRInteger(buf, 1)
-			g.AppendXDRString(buf, GROUP)
-			g.AppendXDRString(buf, group)
+			g.appendXDRInteger(buf, 1)
+			g.appendXDRString(buf, GROUP)
+			g.appendXDRString(buf, group)
 		} else {
-			g.AppendXDRInteger(buf, 0)
+			g.appendXDRInteger(buf, 0)
 		}
 	} else {
 		if len(group) != 0 {
-			g.AppendXDRInteger(buf, 2)
+			g.appendXDRInteger(buf, 2)
 		} else {
-			g.AppendXDRInteger(buf, 1)
+			g.appendXDRInteger(buf, 1)
 		}
-		g.AppendXDRString(buf, SPOOF_HOST)
-		g.AppendXDRString(buf, spoof)
+		g.appendXDRString(buf, SPOOF_HOST)
+		g.appendXDRString(buf, spoof)
 		if len(group) != 0 {
-			g.AppendXDRString(buf, GROUP)
-			g.AppendXDRString(buf, group)
+			g.appendXDRString(buf, GROUP)
+			g.appendXDRString(buf, group)
 		}
 	}
 
@@ -180,29 +186,29 @@ func (g *Gmetric) BuildMetadataPacket(host string, name string, metricType uint3
 	return ret
 }
 
-func (g *Gmetric) BuildValuePacket(host string, name string, metricType uint32, value string, spoof string, group string) (buf_out []byte) {
+func (g *Gmetric) buildValuePacket(host string, name string, metricType uint32, value string, spoof string, group string) (bufOut []byte) {
 	if insaneVerbose {
-		logger.Debug("BuildValuePacket()")
+		logger.Debug("buildValuePacket()")
 	}
 
 	buf := new(bytes.Buffer)
 
-	g.AppendXDRInteger(buf, 128+5)
+	g.appendXDRInteger(buf, 128+5)
 
 	if len(spoof) == 0 {
-		g.AppendXDRString(buf, host)
+		g.appendXDRString(buf, host)
 	} else {
-		g.AppendXDRString(buf, spoof)
+		g.appendXDRString(buf, spoof)
 	}
-	g.AppendXDRString(buf, name)
+	g.appendXDRString(buf, name)
 	if len(spoof) != 0 {
-		g.AppendXDRInteger(buf, 1)
+		g.appendXDRInteger(buf, 1)
 	} else {
-		g.AppendXDRInteger(buf, 0)
+		g.appendXDRInteger(buf, 0)
 	}
 
-	g.AppendXDRString(buf, "%s")
-	g.AppendXDRString(buf, value)
+	g.appendXDRString(buf, "%s")
+	g.appendXDRString(buf, value)
 
 	if insaneVerbose {
 		g.DebugBuffer(buf.Bytes())
@@ -213,15 +219,15 @@ func (g *Gmetric) BuildValuePacket(host string, name string, metricType uint32, 
 	return ret
 }
 
-func (g *Gmetric) AppendXDRInteger(buf *bytes.Buffer, val uint32) {
+func (g *Gmetric) appendXDRInteger(buf *bytes.Buffer, val uint32) {
 	// Append integer, four bytes
 	buf.Write([]byte{byte(val >> 24 & 0xff), byte(val >> 16 & 0xff), byte(val >> 8 & 0xff), byte(val & 0xff)})
 	//logger.Printf("Buffer contains %d bytes after %d added\n", buf.Len(), val)
 }
 
-func (g *Gmetric) AppendXDRString(buf *bytes.Buffer, val string) {
+func (g *Gmetric) appendXDRString(buf *bytes.Buffer, val string) {
 	// Prepend length as integer
-	g.AppendXDRInteger(buf, uint32(len(val)))
+	g.appendXDRInteger(buf, uint32(len(val)))
 
 	// Iterate through string and append
 	for i := 0; i < len(val); i++ {
@@ -237,6 +243,8 @@ func (g *Gmetric) AppendXDRString(buf *bytes.Buffer, val string) {
 	}
 }
 
+// Convert a type constant, like VALUE_UNKNOWN or VALUE_INT, to its string
+// representation.
 func (g *Gmetric) TypeToString(t uint32) string {
 	switch t {
 	case VALUE_UNKNOWN:
@@ -259,6 +267,7 @@ func (g *Gmetric) TypeToString(t uint32) string {
 	return "unknown"
 }
 
+// Produce logger data detailing the contents of the passed buffer.
 func (g *Gmetric) DebugBuffer(buf []byte) {
 	if insaneVerbose {
 		logger.Debug(fmt.Sprintf("buffer contains %d bytes\n", len(buf)))
