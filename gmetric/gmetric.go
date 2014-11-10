@@ -30,9 +30,10 @@ const (
 	GROUP      = "GROUP"
 	SPOOF_HOST = "SPOOF_HOST"
 
-	// Maximum allocated length of packets.
+	// MAX_PACKET_LENGTH is the maximum allocated length of packets.
 	MAX_PACKET_LENGTH = 512
-	// Maximum number of Ganglia gmetric receiving instances.
+	// MAX_GMETRIC_SERVERS is the maximum number of Ganglia gmetric
+	// receiving instances.
 	MAX_GMETRIC_SERVERS = 16
 )
 
@@ -41,39 +42,45 @@ var (
 	insaneVerbose = false
 )
 
+// PacketType represents the type of data being transmitted
 type PacketType uint
 
-// Represents a single Ganglia gmetric receiver.
-type GmetricServer struct {
+// Server represents a single Ganglia gmetric receiver.
+type Server struct {
 	Server net.IP
 	Port   int
 }
 
-// Base object, on which all library operations are based.
+// GmetricServer API compatibility type
+type GmetricServer Server
+
+// Gmetric base object, on which all library operations are based.
 type Gmetric struct {
-	Servers []GmetricServer
+	Servers []Server
 	Host    string
 	Spoof   string
 }
 
-func (g *Gmetric) AddServer(s GmetricServer) {
+// AddServer adds an additional server target
+func (g *Gmetric) AddServer(s Server) {
 	if g.Servers == nil {
 		// Initialize
-		g.Servers = make([]GmetricServer, 0, MAX_GMETRIC_SERVERS)
+		g.Servers = make([]Server, 0, MAX_GMETRIC_SERVERS)
 	}
 	g.Servers = append(g.Servers, s)
 }
 
-// Set external syslog.Writer object.
+// SetLogger sets external syslog.Writer object.
 func (g *Gmetric) SetLogger(l *syslog.Writer) {
 	logger = l
 }
 
-// Set verbosity of library.
+// SetVerbose sets verbosity of library.
 func (g *Gmetric) SetVerbose(v bool) {
 	insaneVerbose = v
 }
 
+// SendMetricPackets transmits metric packets using the specified connections.
 func (g *Gmetric) SendMetricPackets(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string, packetType PacketType, conn []*net.UDPConn) {
 	if insaneVerbose {
 		logger.Debug(fmt.Sprintf("SendMetric(%s, %s)", name, value))
@@ -101,8 +108,9 @@ func (g *Gmetric) SendMetricPackets(name string, value string, metricType uint32
 	}
 }
 
+// OpenConnections creates an array of UDPConn objects for the specified servers
 func (g *Gmetric) OpenConnections() []*net.UDPConn {
-	conn := make([]*net.UDPConn, 0)
+	var conn []*net.UDPConn
 	for i := 0; i < len(g.Servers); i++ {
 		raddr := &net.UDPAddr{IP: g.Servers[i].Server, Port: g.Servers[i].Port}
 		udp, err := net.DialUDP("udp", nil, raddr)
@@ -115,13 +123,14 @@ func (g *Gmetric) OpenConnections() []*net.UDPConn {
 	return conn
 }
 
+// CloseConnections closes out the array of UDPConn specified
 func (g *Gmetric) CloseConnections(conn []*net.UDPConn) {
 	for i := 0; i < len(conn); i++ {
 		conn[i].Close()
 	}
 }
 
-// Backwards-compatibility wrapper
+// SendMetric is an API backwards-compatibility wrapper
 func (g *Gmetric) SendMetric(name string, value string, metricType uint32, units string, slope uint32, tmax uint32, dmax uint32, group string) {
 	conn := g.OpenConnections()
 	g.SendMetricPackets(name, value, metricType, units, slope, tmax, dmax, group, PACKET_BOTH, conn)
@@ -243,8 +252,8 @@ func (g *Gmetric) appendXDRString(buf *bytes.Buffer, val string) {
 	}
 }
 
-// Convert a type constant, like VALUE_UNKNOWN or VALUE_INT, to its string
-// representation.
+// TypeToString converts a type constant, like VALUE_UNKNOWN or VALUE_INT,
+// to its string representation.
 func (g *Gmetric) TypeToString(t uint32) string {
 	switch t {
 	case VALUE_UNKNOWN:
@@ -267,7 +276,7 @@ func (g *Gmetric) TypeToString(t uint32) string {
 	return "unknown"
 }
 
-// Produce logger data detailing the contents of the passed buffer.
+// DebugBuffer produces logger data detailing the contents of the passed buffer.
 func (g *Gmetric) DebugBuffer(buf []byte) {
 	if insaneVerbose {
 		logger.Debug(fmt.Sprintf("buffer contains %d bytes\n", len(buf)))
