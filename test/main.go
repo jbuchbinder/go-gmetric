@@ -14,7 +14,7 @@ func main() {
 		Host:  "127.0.0.1",
 		Spoof: "127.0.0.1:spoof",
 	}
-	gm.AddServer(gmetric.GmetricServer{gIP, gangliaPort})
+	gm.AddServer(gmetric.Server{gIP, gangliaPort})
 
 	for i := 0; i < 10; i++ {
 		log.Printf("Sending packet for some_metric_%d", i)
