@@ -1,9 +1,12 @@
 package main
 
-import "fmt"
-import "github.com/jbuchbinder/go-gmetric/gmetric"
-import "log"
-import "net"
+import (
+	"fmt"
+"log"
+"net"
+
+"github.com/jbuchbinder/go-gmetric/gmetric"
+)
 
 func main() {
 	log.Printf("Initializing test")
